@@ -1,6 +1,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/pydev,python,eclipse
 # Edit at https://www.toptal.com/developers/gitignore?templates=pydev,python,eclipse
 
+.exe
+
 ### Eclipse ###
 .metadata
 bin/
