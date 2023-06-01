@@ -1,0 +1,38 @@
+﻿version: 1
+disable_existing_loggers: false
+formatters:
+  normal:
+    format: '[%(asctime)s %(levelname)8s] %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  simple:
+    format: '[%(asctime)s %(levelname)8s] %(message)s'
+    datefmt: '%y-%m-%d - %H:%M:%S'
+root:  # 默認情況下配置
+  level: DEBUG
+  handlers: [console]
+  propagate: false
+loggers:  # 如果有設定loggers的話會採用，否則採用root設定
+          #Level	Numeric value
+          #CRITICAL	50
+          #ERROR	40
+          #WARNING	30
+          #INFO	20
+          #DEBUG	10
+          #NOTSET	0
+  module:
+    handlers: [console, file]
+    propagate: false
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: normal
+    stream: ext://sys.stdout
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: normal
+    filename: SYSTEM.LOG
+    maxBytes: 5242880
+    backupCount: 1
+    encoding: utf8
