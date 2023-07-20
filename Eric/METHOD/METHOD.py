@@ -7,11 +7,24 @@ Created on 2021年12月24日
 import shutil
 import os
 import datetime
-import ruamel.yaml
+import ruamel.yaml  # @UnresolvedImport
 
-def TimeGet(formatter = "%Y-%m-%d %H:%M:%S"):
+
+def TimeGet(formatter = '%Y-%m-%d %H:%M:%S'):
 
     return datetime.datetime.now().strftime(formatter)
+
+def TimeGetByNow(formatter = '%Y-%m-%d %H:%M:%S'):
+
+    return datetime.datetime.strptime(datetime.datetime.now().strftime(formatter), formatter)
+
+def TimeGetByDate(date, formatter = 'Y-%m-%d %H:%M:%S'):
+    
+    return datetime.datetime.strptime(date, formatter)
+ 
+def TimeToString(date, formatter = 'Y-%m-%d %H:%M:%S'):
+       
+    return date.strftime(formatter)
 
 def FileCopy(src, dst):
     

@@ -4,153 +4,82 @@ Created on 2022年12月20日
 @author: Eric
 '''
 
-from threading import Timer
 import traceback
-from win32api import Sleep
 import threading
-import time
 from MYSQL80 import MYSQL80
 from TWSE import TWSE
 from METHOD import METHOD
 from LOGGER import LOGGER
+import datetime
+from _collections import OrderedDict
+import time
+import random
+from sqlalchemy.sql.expression import false
 
-def OnTest(data):
-    Sleep(1000)
-    return ""
-
-def OnStart(code, odict):
-
-    try:
-        TWSE.InstantStockPrice(code, odict)
-        OnTimer(code, odict)    
-    except:
-        raise 
+  
+def Run(date, user, password, df):
     
-def OnTimer(code, odict):
-    
-    try:
-        stock = Timer(1.0, OnStart, args=(code, odict, ))
-        stock.start()
-    except:
-        raise 
-
-def aa():
-    lock.acquire()         # 鎖定
-    i = 0
-    while i<5:
-        i = i + 1
-        time.sleep(0.5)
-        print('A:', i)
-        if i==2:
-            lock.release()  # i 等於 2 時解除鎖定
-
-def bb():
-    lock.acquire()          # 鎖定
-    i = 0
-    while i<50:
-        i = i + 10
-        time.sleep(0.5)
-        print('B:', i)
-    lock.release()
-    
-def Run(code):
-    print(1)
+    print('Run : {}'.format(date))
+    MYSQL80.CreateField(user, password, df)
     
 if __name__ == '__main__':
     pass
           
     try:
+           
+        # yaml = OrderedDict()  
+        # METHOD.OrderedDict_Set('', yaml, '通用', '開始日期') 
+        # METHOD.OrderedDict_Set('', yaml, '通用', '結束日期')
+        # METHOD.YamlDump('{}//stock.yaml'.format(METHOD.PathGetCurrent()), yaml, 'big5')      
+        yaml = METHOD.GetYaml(METHOD.PathJoin(METHOD.PathGetCurrent(), 'stock.yaml'), 'big5')
+        date_now = METHOD.TimeGet('%Y%m%d')
+        date_start = METHOD.OrderedDict_Get(date_now, yaml, '通用', '開始時間')
+        date_start = METHOD.TimeGetByDate(date_start, '%Y%m%d')      
+        date_end = METHOD.OrderedDict_Get(date_now, yaml, '通用', '結束時間')
+        date_end = METHOD.TimeGetByDate(date_end, '%Y%m%d')
+
+        # data = MYSQL80.Execute(db, 'SELECT * FROM twse_2023.`0050`;')
+        # data = MYSQL80.WriteProfile(db, 'Item', 'test')
+        # data = MYSQL80.ReadProfile(db, 'Item', '123')
               
-
-        syntax = []
-        db = MYSQL80.GetConnector({
-            "host": 'localhost',
-            "port": 3306,
-            "database": 'sys',
-            "user": 'root',
-            "password": '1234',
-            "charset": 'utf8',
-            "use_unicode": True,
-            "get_warnings": True,
-        })
+        user = ''
+        password = '1234'
+        is_max_threading = 0
+        is_create_table = False
+        # 建立 Lock
+        threadings = []
+        lock = threading.Lock()
         
-        config = TWSE.GetConfig(db)
-        
-        db.close()
-
+        while(True):
+            for i in range(1):
+                df = TWSE.DailyClosingQuotes('{}'.format(METHOD.TimeToString(date_start, '%Y%m%d')))
+                time.sleep(random.randint(5, 7))
+                if df.empty: continue
+                
+                user = 'user{}'.format(len(threadings)+1)
+                if is_create_table == False:
+                    MYSQL80.CreateTable(user, password, df)
+                    is_create_table = True
+                
+                
+                t = threading.Thread(target=Run, args=(date_start, user, password, df))
+                threadings.append(t)
+                is_max_threading += 1
+                
+                if len(threadings) == 3:
+                    is_max_threading = 0
+                    
+                    for t in threadings:
+                        t.start()
+                      
+                    for t in threadings:
+                        t.join()       
             
-        code = 1
-        df = TWSE.DailyClosingQuotes('{}'.format(METHOD.TimeGet('%Y%m%d')))
-        TWSE.CreateField(df)
-
-        print(df)
-        lock = threading.Lock()         # 建立 Lock
-        
-        a = threading.Thread(target=aa, args=(code))
-        b = threading.Thread(target=bb)
-        
-        a.start()
-        b.start()
-        
-        # yaml = METHOD.GetYaml(METHOD.PathJoin(METHOD.PathGetCurrent(), 'StockMarketMonitor.yaml'), "big5")  
-        # table = METHOD.OrderedDict_Get("", yaml, "table").split(",")
-        # if len(table) == 0:
-        #     raise RuntimeError("table is empty.")
-        #
-        # executor = ThreadPoolExecutor()         # 建立非同步的多執行緒的啟動器
-        # with ThreadPoolExecutor(max_workers=5) as executor:
-        #
-        #     future_all = {executor.submit(OnTest, code) for code in table}
-        #
-        #         # data = OrderedDict()
-        #         # METHOD.OrderedDict_Set(code, data, "股票代碼")
-        #         # METHOD.OrderedDict_Set(METHOD.OrderedDict_Get("", yaml, "{}".format(code), "停損點"), data, "停損點")
-        #         # METHOD.OrderedDict_Set(METHOD.OrderedDict_Get("", yaml, "{}".format(code), "停利點"), data, "停利點")
-        #
-        #
-        #         # sleep(1)
-        #     for future in concurrent.futures.as_completed(future_all):
-        #         # data = future_all[future]
-        #         try:
-        #             result = future.result()
-        #         except:
-        #             raise
-        #         finally:
-        #             print(result)
-        #
-        #     future_all = {executor.submit(OnTimer, code, yaml) for code in table}
-        #
-        #         # data = OrderedDict()
-        #         # METHOD.OrderedDict_Set(code, data, "股票代碼")
-        #         # METHOD.OrderedDict_Set(METHOD.OrderedDict_Get("", yaml, "{}".format(code), "停損點"), data, "停損點")
-        #         # METHOD.OrderedDict_Set(METHOD.OrderedDict_Get("", yaml, "{}".format(code), "停利點"), data, "停利點")
-        #
-        #
-        #         # sleep(1)
-        #     for future in concurrent.futures.as_completed(future_all):
-        #         data = future_all[future]
-        #         try:
-        #             result = data.result()
-        #         except:
-        #             raise
-        #         finally:
-        #             print(data)
-        #         # except Execption as exc:
-        #         #     print('%r generated an exception: %s' % (url, exc))
-        #         # else:
-        #         #     print('%r page length is %d' % (url, len(data)))
-        #
-        # start_time = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '9:00', '%Y-%m-%d%H:%M')
-        # end_time = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '23:59', '%Y-%m-%d%H:%M')         
-        # while(True):
-        #
-        #
-        #     now_time = datetime.datetime.now()
-        #     # 判断当前时间是否在范围时间内
-        #     # if now_time > start_time and now_time < end_time:
-        #     if now_time >= end_time:
-        #         break
-        #     sleep(10)
+            if date_start >= date_end:
+                break;
+            date_start += datetime.timedelta(days=1)
+                  
+                 
             
     except:
         LOGGER.Record("ERROR", "{}".format(traceback.format_exc()))

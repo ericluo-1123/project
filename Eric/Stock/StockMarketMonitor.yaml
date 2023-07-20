@@ -1,4 +1,0 @@
-table: '00878,0050,0056,006208'
-'00878':
-  condition: 'stop_loss=17;stop_profit=20'
-  time_notify: 60

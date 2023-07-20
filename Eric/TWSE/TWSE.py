@@ -29,19 +29,22 @@ def DailyClosingQuotes(date = ""):#取每日收盤行情
         pandas.set_option("expand_frame_repr",True)#True表示列可以换行显示。设置成False的时候不允许换行显示；
         pandas.set_option("display.width", 80)#横向最多显示多少个字符；
         
+        df = pandas.DataFrame()
         # POST請求夾帶資料
         form_data = {'date': '{}'.format(date), 'type': 'MS'}
         r = requests.post('https://www.twse.com.tw/zh/exchangeReport/MI_INDEX', data=form_data)
 
         if r.status_code != 200 or '很抱歉，沒有符合條件的資料!' in r.text:
-            return r.text
+            print(r.text)
+            return df
     
         if not date :
             date = time.strftime('%Y%m%d', time.localtime())
             
         r = requests.get('http://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date={}&type=ALLBUT0999'.format(date))
         if r.status_code != 200:
-            return r.text
+            print(r.status_code)
+            return df
         
         s = ''    
         for v in r.text.split('\n'):
@@ -52,43 +55,18 @@ def DailyClosingQuotes(date = ""):#取每日收盤行情
         df = pandas.read_csv(si)
         si.close()
         df = df.fillna(0)
-        # df = df.drop(["本益比", "最後揭示賣量", "最後揭示賣價", "最後揭示買量", "最後揭示買價", "漲跌價差", "成交金額", "成交筆數", "漲跌(+/-)", "Unnamed: 16"], axis=1)
-        df.insert(df.shape[1], column="日期", value=[date for i in range(0, df.shape[0])])  # @UnusedVariable
+        df = df.drop(["本益比", "最後揭示賣量", "最後揭示賣價", "最後揭示買量", "最後揭示買價", "漲跌價差", "成交金額", "成交筆數", "漲跌(+/-)", "Unnamed: 16"], axis=1)
+        # df.insert(df.shape[1], column="日期", value=[date for i in range(0, df.shape[0])])  # @UnusedVariable
+        df.insert(0, column="日期", value=[date for i in range(0, df.shape[0])])  # @UnusedVariable
         return df;
     
     except:
-        raise
-
-
-
-def GetConfig(db):
-    
-    data = MYSQL80.Database_Show(db)
-    
-    # if 'config' in data:
-    #     print('config')
-    # else:
-        
-    data = MYSQL80.Database_Create(db, 'config')
-    data = MYSQL80.Database_Use(db, 'config')
-    data = MYSQL80.Table_Create(db, 'config', 'config')
-    data = MYSQL80.Table_Show(db)
-    
-    data = MYSQL80.Database_Drop(db, 'config')
-        
-        
-    return data
-
-def CreateField(df):
-    
-    print(df.columns)
-    print(df.values)
-    
-        
+        return df
+          
 def DailyClosingQuotesA(date = ""):#取每日收盤行情
     
     try :
-          
+        
         pandas.set_option("display.max_rows", None) #顯示所有行
         pandas.set_option("display.max_columns", None) #显示所有列
         pandas.set_option("max_colwidth", None) #顯示列中單獨元素最大長度

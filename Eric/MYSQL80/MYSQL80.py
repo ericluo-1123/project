@@ -11,6 +11,7 @@ import traceback
 from PROCESS import PROCESS
 from METHOD import METHOD
 from LOGGER import LOGGER
+import sys
 
 
 _SQL = {
@@ -75,7 +76,7 @@ def Table_Show(db):
 
 def Table_Create(db, database, table):
     
-    data = Execute(db, 'create table `{}`.`{}`()'.format(database, table))
+    data = Execute(db, 'create table `{}`.`{}`(id bigint unsigned auto_increment primary key)'.format(database, table))
     
     return data
     
@@ -136,30 +137,34 @@ def Execute(db, syntax):
         message = ['False']
         output = []
         rows = []
+           
         start = time.time()
-        cursor = db.cursor()
-        
+        output.append("{}\n".format(syntax))
+        cursor = db.cursor()  
         cursor.execute(syntax)
         rows = cursor.fetchall()
-        warnings = cursor.fetchwarnings()  
-        output.append("cursor.execute >> {}\n".format(syntax))
+        warnings = cursor.fetchwarnings()
         
         if warnings != None:
             for wars in warnings:
-                output.append("mysql.connector.warning.ProgrammingWarnings : {} ({}): {}".format(wars[0], wars[1], wars[2]))
+                output.append("Warning {} ({}): {}".format(wars[0], wars[1], wars[2]))
         else:
-
-            for row in rows:
-                message.append("".join(repr(row)).replace("'", "").replace(",", "").replace("(", "").replace(")", ""))
+            
+            if 'show columns' in syntax:
+                for row in rows:
+                    message.append(repr(row).split(',')[0].replace("'", "").replace("(", ""))
+            else:
+                for row in rows:
+                    message.append("".join(repr(row)).replace("'", "").replace(",", "").replace("(", "").replace(")", ""))
           
             message[0] = 'True'
-            output.append(','.join(message))
-            
+            output.append(','.join(message))        
        
     except:
-        output.append("{}".format(traceback.format_exc()))
+        # output.append("{}".format(traceback.format_exc()))
         # output.append("{} : {}".format([s for s in str(sys.exc_info()[0]).split('\'')][1], sys.exc_info()[1]))
-
+        output.append("Error Code {}\n".format(sys.exc_info()[1]))
+        
         
     finally:
         cursor.close()
@@ -168,7 +173,215 @@ def Execute(db, syntax):
         LOGGER.Record("DEBUG", "\n".join(output))
         
     return message
+     
+def ReadProfile(db, key, default):
+    
+    data = []
+    for i in range(1):
         
+        data = Execute(db, 'use `profile`;')
+        if data[0] == False: continue
+        data = Execute(db, 'select `{}` from `profile`.`config`;'.format(key))
+        if data[0] == False: continue
+        
+    if len(data) == 1:
+        data.append(default)
+        
+    return data
+
+def WriteProfile(db, key, value):
+      
+    data = Execute(db, 'show databases;')
+    if 'profile' in data:
+        
+        for i in range(1):
+            data = Execute(db, 'use `profile`;')
+            if data[0] == False: continue
+                             
+            data = Execute(db, 'show tables;')
+            if 'config' not in data:
+                data = Execute(db, 'create table if not exists `profile`.`config`(id bigint unsigned not null auto_increment primary key);')
+                if data[0] == False: continue
+            
+            data = Execute(db, 'show columns from `profile`.`config`;')
+            if key in data:      
+                data = Execute(db, 'insert into `profile`.`config`(`{}`) values("{}");'.format(key, value))
+                if data[0] == False: continue
+            else:
+                data = Execute(db, 'alter table `profile`.`config` add column {} VARCHAR(30);'.format(key, value))
+                if data[0] == False: continue  
+    else:
+    
+        for i in range(1):
+            
+            data = Execute(db, 'create database if not exists `profile`;')
+            if data[0] == False: continue              
+       
+            data = Execute(db, 'use `profile`;')
+            if data[0] == False: continue              
+            
+            data = Execute(db, 'create table if not exists `profile`.`config`(id bigint unsigned not null auto_increment primary key);')
+            if data[0] == False: continue          
+            
+            data = Execute(db, 'show tables;')
+            if data[0] == False: continue          
+            
+            data = Execute(db, 'alter table `profile`.`config` add column {} VARCHAR(30);'.format(key, value))
+            if data[0] == False: continue
+                       
+        
+    return data
+
+def CreateTable(user, password, df):
+    
+    try:
+        syntax = []
+        db = GetConnector({
+            "host": 'localhost',
+            "port": 3306,
+            "database": 'sys',
+            "user": '{}'.format(user),
+            "password": '{}'.format(password),
+            "charset": 'utf8',
+            "use_unicode": True,
+            "get_warnings": True,
+        })
+            
+        items = ''
+        items_insert = ''  
+        for col in df.columns:
+            if col == '證券代號' or col == '證券名稱': continue
+            
+            if items:
+                items += ', `{}` VARCHAR(30)'.format(col)
+            else:
+                items += '`{}` VARCHAR(30)'.format(col)
+                
+            if items_insert:
+                items_insert += ', `{}`'.format(col)
+            else :
+                items_insert += '`{}`'.format(col)
+                    
+        database_name = 'twse_{}'.format(METHOD.TimeGet('%Y'))
+    
+        for i in range(1):
+            
+            data = Execute(db, 'show databases;')
+            if data[0] == False: continue
+            
+            if database_name not in data:
+                data = Execute(db, 'create database if not exists `{}`;'.format(database_name))
+                if data[0] == False: continue
+                     
+            data = Execute(db, 'use `{}`;'.format(database_name))
+            if data[0] == False: continue                 
+                    
+            tables = Execute(db, 'show tables;')
+            if data[0] == False: continue
+     
+            for j in range(df.shape[0]):
+                code = df.at[j, '證券代號']
+                name = df.at[j, '證券名稱']
+                table_name = '{} {}'.format(code.lower(), name.lower())
+                if table_name in tables: continue
+                data = Execute(db, 'create table if not exists `{}`.`{}`({});'.format(database_name, table_name, items))
+                if data[0] == False: continue
+            
+    except:
+        raise
+    finally:
+        db.close()
+        
+    
+def CreateField(user, password, df):
+    
+    try:
+        syntax = []
+        db = GetConnector({
+            "host": 'localhost',
+            "port": 3306,
+            "database": 'sys',
+            "user": '{}'.format(user),
+            "password": '{}'.format(password),
+            "charset": 'utf8',
+            "use_unicode": True,
+            "get_warnings": True,
+        })
+            
+        items = ''
+        items_insert = ''  
+        for col in df.columns:
+            if col == '證券代號' or col == '證券名稱': continue
+            
+            if items:
+                items += ', `{}` VARCHAR(30)'.format(col)
+            else:
+                items += '`{}` VARCHAR(30)'.format(col)
+                
+            if items_insert:
+                items_insert += ', `{}`'.format(col)
+            else :
+                items_insert += '`{}`'.format(col)
+                    
+        database_name = 'twse_{}'.format(METHOD.TimeGet('%Y'))
+    
+        for i in range(1):
+            
+            data = Execute(db, 'show databases;')
+            if data[0] == False: continue
+            
+            # if database_name not in data:
+            #     data = Execute(db, 'create database if not exists `{}`;'.format(database_name))
+            #     if data[0] == False: continue
+                     
+            data = Execute(db, 'use `{}`;'.format(database_name))
+            if data[0] == False: continue                 
+                    
+            # tables = Execute(db, 'show tables;')
+            # if data[0] == False: continue
+            #
+            # for j in range(df.shape[0]):
+            #     code = df.at[j, '證券代號']
+            #     name = df.at[j, '證券名稱']
+            #     table_name = '{} {}'.format(code.lower(), name.lower())
+            #     if table_name in tables: continue
+            #     data = Execute(db, 'create table if not exists `{}`.`{}`({});'.format(database_name, table_name, items))
+            #     if data[0] == False: continue
+        
+            for j in range(df.shape[0]):
+                code = df.at[j, '證券代號']
+                name = df.at[j, '證券名稱']
+                table_name = '{} {}'.format(code.lower(), name.lower())    
+                # index = df[df['證券代號'] == code].index.tolist()
+    
+                checks = ''
+                values = ''
+                for col in df.columns:
+                    if col == '證券代號' or col == '證券名稱': continue
+                    
+                    if values:
+                        values += ', "{}"'.format(df.at[j, col])
+                    else:
+                        values += '"{}"'.format(df.at[j, col])
+                        
+                    if checks:
+                        checks += ' and `{}` = "{}"'.format(col, df.at[j, col])
+                    else:
+                        checks += '`{}` = "{}"'.format(col, df.at[j, col])
+                        
+                # data = Execute(db, 'insert into `{}`.`{}`({}) values({});'.format(database_name, table_name, items_insert, values, df.at[j, '日期']))
+                data = Execute(db, 'insert into `{}`.`{}`({}) select {} from dual where not exists(select {} from `{}`.`{}` where {});'.format(database_name, table_name, items_insert, values, items_insert, database_name, table_name, checks))
+                if data[0] == False: continue
+    
+    
+            data = Execute(db, 'commit')
+            if data[0] == False: continue
+            
+    except:
+        raise
+    finally:
+        db.close()
+    
 def ExecuteFromYaml():
     
     try:    
@@ -287,22 +500,6 @@ def ExecuteFromYaml():
         
     except:
         raise
-
-def ToSQL(config, df):
-    
-    engine = create_engine("mysql+pymysql://admin:1234@localhost/twse_2022?charset=utf8")
-    # df = pandas.DataFrame({"日期":["20221111"], "證券代號":["0050"]})
-    df.to_sql("0050", engine, index= False, if_exists='append')
-    
-    # with mysql.connector.Connect(**config) as db:
-        
-        
-            # output = []        
-            # cursor = db.cursor()
-            # output = Execute(cursor, syntax)          
-            # cursor.close()
-            # db.close()    
-            # return output
     
 def Request(config, syntax):
     
