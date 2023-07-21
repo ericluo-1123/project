@@ -12,6 +12,7 @@ from PROCESS import PROCESS
 from METHOD import METHOD
 from LOGGER import LOGGER
 import sys
+from adodbapi.examples.xls_read import conn
 
 
 _SQL = {
@@ -177,7 +178,7 @@ def Execute(db, syntax):
 def ReadProfile(db, key, default):
     
     data = []
-    for i in range(1):
+    for i in range(1):  # @UnusedVariable
         
         data = Execute(db, 'use `profile`;')
         if data[0] == False: continue
@@ -194,7 +195,8 @@ def WriteProfile(db, key, value):
     data = Execute(db, 'show databases;')
     if 'profile' in data:
         
-        for i in range(1):
+        for i in range(1):  # @UnusedVariable
+            
             data = Execute(db, 'use `profile`;')
             if data[0] == False: continue
                              
@@ -212,7 +214,7 @@ def WriteProfile(db, key, value):
                 if data[0] == False: continue  
     else:
     
-        for i in range(1):
+        for i in range(1):  # @UnusedVariable
             
             data = Execute(db, 'create database if not exists `profile`;')
             if data[0] == False: continue              
@@ -232,12 +234,13 @@ def WriteProfile(db, key, value):
         
     return data
 
-def CreateTable(user, password, df):
+def CreateTable(host, user, password, df):
     
     try:
-        syntax = []
+        
+        connect = False
         db = GetConnector({
-            "host": 'localhost',
+            "host": '{}'.format(host),
             "port": 3306,
             "database": 'sys',
             "user": '{}'.format(user),
@@ -247,6 +250,7 @@ def CreateTable(user, password, df):
             "get_warnings": True,
         })
             
+        connect = True
         items = ''
         items_insert = ''  
         for col in df.columns:
@@ -264,7 +268,7 @@ def CreateTable(user, password, df):
                     
         database_name = 'twse_{}'.format(METHOD.TimeGet('%Y'))
     
-        for i in range(1):
+        for i in range(1):  # @UnusedVariable
             
             data = Execute(db, 'show databases;')
             if data[0] == False: continue
@@ -290,15 +294,16 @@ def CreateTable(user, password, df):
     except:
         raise
     finally:
-        db.close()
+        if connect == True:
+            db.close()
         
     
-def CreateField(user, password, df):
+def CreateField(host, user, password, df):
     
     try:
-        syntax = []
+
         db = GetConnector({
-            "host": 'localhost',
+            "host": '{}'.format(host),
             "port": 3306,
             "database": 'sys',
             "user": '{}'.format(user),
@@ -325,7 +330,7 @@ def CreateField(user, password, df):
                     
         database_name = 'twse_{}'.format(METHOD.TimeGet('%Y'))
     
-        for i in range(1):
+        for i in range(1):  # @UnusedVariable
             
             data = Execute(db, 'show databases;')
             if data[0] == False: continue

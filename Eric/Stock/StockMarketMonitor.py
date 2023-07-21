@@ -11,16 +11,15 @@ from TWSE import TWSE
 from METHOD import METHOD
 from LOGGER import LOGGER
 import datetime
-from _collections import OrderedDict
 import time
 import random
-from sqlalchemy.sql.expression import false
+
 
   
-def Run(date, user, password, df):
+def Run(date, host, user, password, df):
     
     print('Run : {}'.format(date))
-    MYSQL80.CreateField(user, password, df)
+    MYSQL80.CreateField(host, user, password, df)
     
 if __name__ == '__main__':
     pass
@@ -42,6 +41,7 @@ if __name__ == '__main__':
         # data = MYSQL80.WriteProfile(db, 'Item', 'test')
         # data = MYSQL80.ReadProfile(db, 'Item', '123')
               
+        host = '127.0.0.1'
         user = ''
         password = '1234'
         is_max_threading = 0
@@ -53,16 +53,16 @@ if __name__ == '__main__':
         while(True):
             for i in range(1):
                 df = TWSE.DailyClosingQuotes('{}'.format(METHOD.TimeToString(date_start, '%Y%m%d')))
-                time.sleep(random.randint(5, 7))
+                time.sleep(random.randint(5, 6))
                 if df.empty: continue
                 
                 user = 'user{}'.format(len(threadings)+1)
                 if is_create_table == False:
-                    MYSQL80.CreateTable(user, password, df)
+                    MYSQL80.CreateTable(host, user, password, df)
                     is_create_table = True
                 
                 
-                t = threading.Thread(target=Run, args=(date_start, user, password, df))
+                t = threading.Thread(target=Run, args=(date_start, host, user, password, df))
                 threadings.append(t)
                 is_max_threading += 1
                 
